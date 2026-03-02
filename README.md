@@ -1,50 +1,80 @@
-# Welcome to your Expo app 👋
+# Express App (Expo / React Native)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Mobile frontend for the Express ordering and delivery platform.
 
-## Get started
+## Setup
 
-1. Install dependencies
+1. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Configure environment variables in `.env`:
+
+   ```env
+   EXPO_PUBLIC_API_URL=http://<your-backend-host>:8080
+   EXPO_PUBLIC_APP_TOKEN=<optional-app-token>
+   ```
+
+3. Start the app:
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Scripts
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- `npm run lint` — Run Expo/TypeScript lint checks.
+- `npm run reset-project` — Reset starter scaffold.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## App Structure
 
-## Get a fresh project
+- `app/(auth)` — Login and registration flow.
+- `app/(tabs)` — Main app tabs (Menu, Drivers, Profile, Delivery*).
+- `app/checkout.tsx` — Checkout flow.
+- `app/order-confirm.tsx` — Order confirmation screen.
+- `app/delivery-auth.tsx` — Delivery partner registration form.
+- `context/AuthContext.tsx` — Auth state and role-aware user updates.
+- `api/client.ts` — API clients (auth, checkout, delivery, location).
 
-When you're ready, run:
+`*` Delivery tab is only visible for users with `ROLE_DELIVERY`.
 
-```bash
-npm run reset-project
-```
+## Delivery Mode Flow
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Registration
 
-## Learn more
+- From Profile, tap **Switch to Delivery Mode**.
+- If user does not have `ROLE_DELIVERY`, app navigates to `delivery-auth`.
+- User submits `age`, `car`, and `whatsappNumber`.
+- Frontend calls `deliveryAuthAPI.register()`.
+- On success, user roles are refreshed in `AuthContext` so UI updates immediately.
 
-To learn more about developing your project with Expo, look at the following resources:
+### Delivery Orders Tab
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- Route: `app/(tabs)/delivery.tsx`.
+- Loads orders via `deliveryAuthAPI.getOrders()`.
+- Shows only `PENDING` orders.
+- Polls every 5 seconds for real-time updates.
+- Each order card displays:
+  - Items
+  - Total price
+  - Distance
+  - Delivery address
+  - **Accept** button
+- Accept uses `deliveryAuthAPI.acceptOrder(orderId)` and removes accepted item from the pending list.
 
-## Join the community
+## Role-Based Navigation Rules
 
-Join our community of developers creating universal apps.
+- Root stack registers `delivery-auth` screen.
+- Tabs layout conditionally renders **Delivery** tab only when `ROLE_DELIVERY` exists.
+- Profile mode toggle:
+  - `Switch to Delivery Mode` (or opens registration for non-delivery users)
+  - `Switch to Client Mode`
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## API Methods Used (Delivery)
+
+- `deliveryAuthAPI.register(data)`
+- `deliveryAuthAPI.getMe()`
+- `deliveryAuthAPI.getOrders()`
+- `deliveryAuthAPI.acceptOrder(orderId)`

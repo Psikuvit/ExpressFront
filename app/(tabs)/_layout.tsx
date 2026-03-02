@@ -1,33 +1,61 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import { Text } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+function TabIcon({ emoji }: { emoji: string }) {
+  return <Text style={{ fontSize: 20 }}>{emoji}</Text>;
+}
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function TabsLayout() {
+  const { user, isDeliveryMode } = useAuth();
+  const hasDeliveryRole = user?.roles?.includes('ROLE_DELIVERY') ?? false;
+  const showDeliveryTab = hasDeliveryRole && isDeliveryMode;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarActiveTintColor: '#53b175',
+        tabBarInactiveTintColor: '#999',
+        tabBarStyle: {
+          borderTopWidth: 0,
+          elevation: 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 12,
+          height: 60,
+          paddingBottom: 8,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Menu',
+          tabBarIcon: ({ color }) => <TabIcon emoji="🍽️" />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Drivers',
+          tabBarIcon: ({ color }) => <TabIcon emoji="🏍️" />,
+        }}
+      />
+      {showDeliveryTab && (
+        <Tabs.Screen
+          name="delivery"
+          options={{
+            title: 'Delivery',
+            tabBarIcon: ({ color }) => <TabIcon emoji="📦" />,
+          }}
+        />
+      )}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <TabIcon emoji="👤" />,
         }}
       />
     </Tabs>

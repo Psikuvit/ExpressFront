@@ -1,112 +1,121 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, FlatList, StyleSheet,
+  ActivityIndicator, RefreshControl, ListRenderItem,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { deliveryAPI } from '@/api/client';
+import type { DeliveryGuy } from '@/type';
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+export default function ExploreScreen() {
+  const [drivers,     setDrivers]     = useState<DeliveryGuy[]>([]);
+  const [isLoading,   setIsLoading]   = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-export default function TabTwoScreen() {
+  const fetchDrivers = async (silent = false) => {
+    if (!silent) setIsLoading(true);
+    try {
+      const data = await deliveryAPI.getAll();
+      setDrivers(data);
+    } catch {
+      // silently fail
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => { fetchDrivers(); }, []);
+
+  const renderDriver: ListRenderItem<DeliveryGuy> = ({ item }) => (
+    <View style={styles.card}>
+      <View style={[styles.avatar, { backgroundColor: item.available ? '#53b175' : '#ccc' }]}>
+        <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+      </View>
+      <View style={styles.info}>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{item.name}</Text>
+          <View style={[styles.statusBadge, item.available ? styles.statusAvailable : styles.statusBusy]}>
+            <Text style={[styles.statusText, item.available ? styles.statusTextAvailable : styles.statusTextBusy]}>
+              {item.available ? 'Available' : 'On delivery'}
+            </Text>
+          </View>
+        </View>
+        <Text style={styles.meta}>🚗 {item.car}</Text>
+        <Text style={styles.meta}>📍 {item.nearestLocation.address || 'Location set'}</Text>
+        {item.distanceFromUser > 0 && (
+          <Text style={styles.distance}>{item.distanceFromUser.toFixed(1)} km away</Text>
+        )}
+      </View>
+    </View>
+  );
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <SafeAreaView style={styles.wrapper}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Delivery Drivers</Text>
+        <Text style={styles.subtitle}>{drivers.filter(d => d.available).length} available now</Text>
+      </View>
+
+      {isLoading ? (
+        <ActivityIndicator color="#53b175" style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={drivers}
+          keyExtractor={item => String(item.id)}
+          renderItem={renderDriver}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={() => { setIsRefreshing(true); fetchDrivers(true); }}
+              tintColor="#53b175"
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>🏍️</Text>
+              <Text style={styles.emptyText}>No drivers found</Text>
+            </View>
+          }
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  wrapper:       { flex: 1, backgroundColor: '#f8f9fa' },
+  header: {
+    paddingHorizontal: 20, paddingVertical: 16,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0',
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  title:         { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
+  subtitle:      { color: '#888', fontSize: 13, marginTop: 2 },
+  listContent:   { padding: 16 },
+  card: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    borderRadius: 16, padding: 16, marginBottom: 12,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
+  avatar: {
+    width: 50, height: 50, borderRadius: 25,
+    justifyContent: 'center', alignItems: 'center', marginRight: 14,
+  },
+  avatarText:    { color: '#fff', fontSize: 20, fontWeight: '800' },
+  info:          { flex: 1 },
+  nameRow:       { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  name:          { fontSize: 15, fontWeight: '700', color: '#1a1a1a' },
+  statusBadge:   { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2 },
+  statusAvailable: { backgroundColor: '#e8f5e9' },
+  statusBusy:    { backgroundColor: '#f5f5f5' },
+  statusText:    { fontSize: 11, fontWeight: '700' },
+  statusTextAvailable: { color: '#2e7d32' },
+  statusTextBusy:      { color: '#999' },
+  meta:          { color: '#888', fontSize: 13, marginBottom: 2 },
+  distance:      { color: '#53b175', fontSize: 12, fontWeight: '600', marginTop: 4 },
+  empty:         { alignItems: 'center', marginTop: 80 },
+  emptyEmoji:    { fontSize: 56, marginBottom: 12 },
+  emptyText:     { color: '#aaa', fontSize: 16 },
 });

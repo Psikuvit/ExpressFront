@@ -1,24 +1,46 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { Stack, useRouter, useSegments, type Href } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+// ─── Auth guard — redirects based on login state ──────────────────────────────
+function AuthGuard() {
+  const { user, isLoading } = useAuth();
+  const segments  = useSegments();
+  const router    = useRouter();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = (segments[0] as string) === '(auth)';
+
+    if (!user && !inAuthGroup) {
+      // Not logged in → go to login
+      router.replace('/(auth)/login' as Href);
+    } else if (user && inAuthGroup) {
+      // Logged in → go to tabs
+      router.replace('/(tabs)' as Href);
+    }
+  }, [user, isLoading, segments, router]);
+
+  return null;
+}
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <AuthGuard />
+        <StatusBar style="dark" />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="(auth)"           options={{ headerShown: false }} />
+          <Stack.Screen name="(tabs)"           options={{ headerShown: false }} />
+          <Stack.Screen name="delivery-auth"    options={{ headerShown: false }} />
+          <Stack.Screen name="checkout"         options={{ presentation: 'modal', headerShown: false }} />
+          <Stack.Screen name="order-confirm"    options={{ headerShown: false }} />
+        </Stack>
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }
