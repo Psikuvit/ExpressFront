@@ -34,6 +34,11 @@ const resolveBaseUrl = (): string => {
 export const BASE_URL = resolveBaseUrl();
 export const APP_TOKEN = process.env.EXPO_PUBLIC_APP_TOKEN?.trim() || '';
 
+export const isNetworkError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  return Boolean((error as { isNetworkError?: boolean }).isNetworkError);
+};
+
 // ─── Core fetch wrapper ───────────────────────────────────────────────────────
 
 let refreshPromise: Promise<void> | null = null;
@@ -99,6 +104,7 @@ const request = async <T>(
   } catch (error) {
     const networkError = {
       message: `Cannot reach backend at ${BASE_URL}. Set EXPO_PUBLIC_API_URL to your LAN IP, e.g. http://192.168.x.x:8080`,
+      isNetworkError: true,
     };
     if (__DEV__) {
       console.warn(`[API ${id}] ✕ ${method} ${path} network (${Date.now() - startedAt}ms)`, { ...networkError, cause: error });
