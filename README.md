@@ -15,6 +15,7 @@ Mobile frontend for the Express ordering and delivery platform.
    ```env
    EXPO_PUBLIC_API_URL=http://<your-backend-host>:8080
    EXPO_PUBLIC_APP_TOKEN=<optional-app-token>
+   EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=<optional-for-native-map-provider-config>
    ```
 
 3. Start the app:
@@ -64,6 +65,37 @@ Mobile frontend for the Express ordering and delivery platform.
   - **Accept** button
 - Accept uses `deliveryAuthAPI.acceptOrder(orderId)` and removes accepted item from the pending list.
 
+## Delivery Reliability and UX
+
+### 1. Optimistic Accept Order
+
+- Delivery orders now use TanStack Query (`@tanstack/react-query`).
+- Tapping **Accept** updates the UI immediately (optimistic mutation).
+- On backend validation failure, the list rolls back and shows an error alert.
+- On network failure, intent is queued offline and retried automatically.
+
+### 2. Background Location Tracking
+
+- Uses `expo-location` + `expo-task-manager` background task.
+- When a delivery partner is in **Delivery Mode**, background location updates start automatically.
+- Updates continue while the app is minimized (subject to OS permission/battery constraints).
+
+### 3. Offline Queue and Auto Retry
+
+- Uses AsyncStorage-backed queue in `utils/offline-queue.ts`.
+- Queued actions:
+   - Accept order intent
+   - Driver location update
+- Queue is flushed automatically when connectivity is restored (`expo-network` listener).
+
+### 4. Distance and ETA Visual Feedback
+
+- Delivery order cards now show:
+   - Estimated ETA (simple speed-based estimate)
+   - Route preview map with driver marker, destination marker, and a polyline
+- Implemented with `react-native-maps`.
+- Current implementation draws a direct polyline between points; road-snapped routing can be added later via Google Directions/Mapbox Directions API.
+
 ## Role-Based Navigation Rules
 
 - Root stack registers `delivery-auth` screen.
@@ -78,3 +110,10 @@ Mobile frontend for the Express ordering and delivery platform.
 - `deliveryAuthAPI.getMe()`
 - `deliveryAuthAPI.getOrders()`
 - `deliveryAuthAPI.acceptOrder(orderId)`
+
+## New Infrastructure Files
+
+- `lib/query-client.ts` — shared QueryClient setup.
+- `hooks/use-offline-queue-processor.ts` — connectivity-triggered queue flush.
+- `utils/offline-queue.ts` — AsyncStorage queue for offline delivery intents.
+- `services/background-location.ts` — background location task registration/start/stop.
